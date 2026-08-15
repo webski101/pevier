@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String               @id @default(cuid())
+  googleSubject String               @unique
+  email         String               @unique
+  name          String?
+  avatarUrl     String?
+  sessions      UserSession[]
+  connections   PlatformConnection[]
+  posts         Post[]
+  auditRecords  AuditRecord[]
+  policySettings PolicySetting[]
+  incidents      Incident[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Agent {
+  id        String   @id
+  name      String
+  state     String   @default("RUNNING")
+  risk      Int      @default(0)
+  postsToday Int     @default(0)
+  blocks    Int      @default(0)
+  channels  Channel[]
+  posts     Post[]
+  createdAt DateTime @default(now())
+}
+
+model Channel {
+  id        String   @id
+  handle    String
+  name      String
+  platform  String
+  state     String   @default("RUNNING")
+  risk      Int      @default(0)
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id])
+  posts     Post[]
+  createdAt DateTime @default(now())
+}
+
+model Post {
+  id                String   @id
+  title             String
+  description       String   @default("")
+  contentText       String
+  platform          String
+  status            String
+  decision          String?
+  riskScore         Int      @default(0)
+  syntheticMedia    Boolean  @default(false)
+  targetRegionsJson String   @default("[]")
+  policyResultsJson String   @default("[]")
+  scheduledAt       DateTime?
+  createdAt         DateTime @default(now())
+  agentId           String
+  channelId         String
+  userId            String?
+  agent             Agent    @relation(fields: [agentId], references: [id])
+  channel           Channel  @relation(fields: [channelId], references: [id])
+  user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Incident {
+  id           String   @id
+  title        String
+  severity     String
+  source       String
+  affectedPosts Int
+  affectedChannels Int
+  action       String
+  status       String
+  timelineJson String
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model AuditRecord {
+  id          String   @id
+  timestamp   DateTime @default(now())
+  actor       String
+  agentId     String?
+  channelId   String?
+  platform    String?
+  action      String
+  decision    String?
+  riskScore   Int?
+  policyResultsJson String @default("[]")
+  previousHash String
+  hash        String
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, timestamp])
+}
+
+model CircuitState {
+  id        String   @id
+  scope     String
+  scopeId   String
+  state     String
+  reason    String?
+  updatedAt DateTime @updatedAt
+  @@unique([scope, scopeId])
+}
+
+model PolicySetting {
+  id        String   @id @default(cuid())
+  policyId  String
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enabled   Boolean  @default(true)
+  warnAt    Float?
+  holdAt    Float?
+  blockAt   Float?
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, policyId])
+  @@index([userId])
+}
+
+model PlatformConnection {
+  id                    String   @id
+  platform              String
+  userId                 String?
+  user                   User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status                String   @default("CONNECTED")
+  mode                  String   @default("DRY_RUN")
+  accountLabel          String?
+  channelId             String?
+  accessTokenEncrypted  String
+  refreshTokenEncrypted String
+  tokenExpiresAt        DateTime
+  scope                 String
+  lastError             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([userId, platform])
+  @@index([userId])
+}
