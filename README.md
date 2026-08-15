@@ -187,3 +187,8 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for the release checklist. Do not advertise
 
 - Control Room during circuit-breaker event — _capture from local build_
 - Audit chain verification and tamper detection — _capture from local build_
+
+## whats next
+
+integration of more social media e.g threads, bluesky, instagram, facebook and so on
+
