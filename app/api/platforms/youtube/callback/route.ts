@@ -11,7 +11,7 @@ function matchesState(expected: string | undefined, received: string | null) {
 }
 
 function settingsRedirect(request: NextRequest, result: string) {
-  const url = new URL("/", request.url);
+  const url = new URL("/control-room", request.url);
   url.searchParams.set("view", "Settings");
   url.searchParams.set("youtube", result);
   const response = NextResponse.redirect(url);
