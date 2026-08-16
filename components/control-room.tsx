@@ -2,7 +2,44 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { upload as uploadBlob } from "@vercel/blob/client";
-import { Activity, AlertTriangle, ArrowRight, Bot, Check, ChevronRight, CircleStop, Cloud, Command, Copy, Fingerprint, Gauge, Globe2, Instagram, LayoutDashboard, ListChecks, LoaderCircle, LogOut, Menu, Moon, Network, RadioTower, Search, Send, Settings, Shield, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, TerminalSquare, Trash2, Unplug, Upload, X, Youtube } from "lucide-react";
+import {
+  ArrowRight,
+  Broadcast as RadioTower,
+  CaretRight as ChevronRight,
+  Check,
+  CircleNotch as LoaderCircle,
+  Cloud,
+  Command,
+  Copy,
+  Fingerprint,
+  Gauge,
+  Gear as Settings,
+  GlobeHemisphereWest as Globe2,
+  InstagramLogo as Instagram,
+  List as Menu,
+  ListChecks,
+  MagnifyingGlass as Search,
+  Moon,
+  PaperPlaneTilt as Send,
+  Plug as Unplug,
+  Pulse as Activity,
+  Robot as Bot,
+  ShareNetwork as Network,
+  Shield,
+  ShieldCheck,
+  ShieldWarning as ShieldAlert,
+  SignOut as LogOut,
+  SlidersHorizontal,
+  SquaresFour as LayoutDashboard,
+  StopCircle as CircleStop,
+  Sun,
+  TerminalWindow as TerminalSquare,
+  Trash as Trash2,
+  UploadSimple as Upload,
+  WarningCircle as AlertTriangle,
+  X,
+  YoutubeLogo as Youtube,
+} from "@phosphor-icons/react";
 import { instagramUploadPath, isSupportedInstagramVideo, MAX_INSTAGRAM_VIDEO_BYTES } from "@/lib/instagram-media";
 import type { CircuitStatus } from "@/lib/types";
 
@@ -41,7 +78,7 @@ function RiskDial({ score }: { score: number }) {
 
 export function ControlRoom({ user }: { user: { name: string | null; email: string; avatarUrl: string | null } }) {
   const [view, setView] = useState<View>("Overview");
-  const [dark, setDark] = useState(true);
+  const [dark, setDark] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [verification, setVerification] = useState<null | { valid: boolean; checked?: number; index?: number }>(null);
