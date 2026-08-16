@@ -335,11 +335,17 @@ main { flex: 1; }
 .x-mark { display: grid; flex: 0 0 auto; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: var(--radius-md); background: var(--color-surface-raised); color: var(--color-ink); font: 700 1.25rem var(--font-display); }
 .instagram-mark { display: grid; flex: 0 0 auto; place-items: center; width: 4.5rem; height: 4.5rem; border-radius: 50%; background: #d62976; color: white; }
 .instagram-mark svg { width: 2rem; height: 2rem; }
+.bluesky-mark { display: grid; flex: 0 0 auto; place-items: center; width: 4.5rem; height: 4.5rem; border-radius: 50%; background: #1185fe; color: white; }
+.bluesky-mark svg { width: 2rem; height: 2rem; }
 .platform-connection__status { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: var(--space-xs); }
 .platform-connection__status strong { overflow-wrap: anywhere; }
 .offline-dot { display: inline-block; width: .45rem; height: .45rem; border-radius: 50%; background: var(--color-muted); }
 .platform-connection__actions { display: flex; align-items: flex-end; flex-direction: column; gap: var(--space-sm); }
 .platform-connection__actions > small { max-width: 28rem; color: var(--color-graphite-muted); text-align: end; }
+.bluesky-connection { margin-block-start: var(--space-md); }
+.bluesky-connect-form { display: flex; align-items: flex-end; gap: var(--space-sm); }
+.bluesky-connect-form label { display: flex; min-width: 13rem; flex-direction: column; gap: .35rem; color: var(--color-graphite-muted); font-size: var(--text-xs); }
+.bluesky-connect-form input { min-height: 2.85rem; padding: var(--space-sm) var(--space-md); border: var(--rule-thin) solid #3b5875; border-radius: var(--radius-sm); background: #0b1722; color: white; }
 .config-callout { display: flex; align-items: flex-end; flex-direction: column; gap: var(--space-2xs); color: var(--color-graphite-muted); font-size: var(--text-xs); }
 .mode-switch { display: flex; padding: var(--space-2xs); border: var(--rule-thin) solid var(--color-rule-strong); border-radius: var(--radius-sm); background: var(--color-graphite-2); }
 .mode-switch button { min-height: 2.4rem; padding-inline: var(--space-md); border: 0; border-radius: calc(var(--radius-sm) - var(--space-2xs)); background: transparent; color: var(--color-graphite-muted); cursor: pointer; }
@@ -391,6 +397,7 @@ main { flex: 1; }
 .instagram-simulator__intro h2 { max-width: 17ch; font-size: var(--text-2xl); line-height: 1; }
 .instagram-simulator__intro p { max-width: 52ch; color: var(--color-muted); }
 .instagram-simulator__intro > span { color: #d62976; font-size: var(--text-xs); font-weight: 700; letter-spacing: .08em; }
+.bluesky-publisher .instagram-simulator__intro > span { color: #1185fe; }
 .safe-lock { display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); background: var(--color-safe-soft); color: var(--color-safe); font-size: var(--text-sm); }
 .safe-lock--public { background: var(--color-danger-soft); color: var(--color-danger); }
 .instagram-simulator form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(12rem, .65fr); align-items: start; gap: var(--space-md); }
@@ -607,7 +614,7 @@ main { flex: 1; }
   .page { padding: var(--space-md); }
   .instagram-connection, .instagram-simulator, .agent-bridge { padding: var(--space-lg); gap: var(--space-lg); }
   .platform-connection__identity { align-items: flex-start; }
-  .instagram-mark, .youtube-mark, .x-mark { width: 3rem; height: 3rem; }
+  .instagram-mark, .bluesky-mark, .youtube-mark, .x-mark { width: 3rem; height: 3rem; }
   .instagram-simulator form { grid-template-columns: 1fr; }
   .instagram-media-fields { grid-template-columns: 1fr; }
   .agent-route { grid-template-columns: 1fr; }
@@ -622,6 +629,8 @@ main { flex: 1; }
   .issued-agent-key > div, .agent-key-row > span:first-child { grid-column: 1 / -1; }
   .field-wide { grid-column: 1; }
   .mode-switch, .platform-connection__actions { width: 100%; }
+  .bluesky-connect-form { width: 100%; align-items: stretch; flex-direction: column; }
+  .bluesky-connect-form label { min-width: 0; }
   .platform-coming-soon { grid-template-columns: auto minmax(0, 1fr); padding-inline: 0; }
   .platform-coming-soon > .badge { grid-column: 2; justify-self: start; }
   .instagram-submit { width: 100%; }

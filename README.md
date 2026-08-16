@@ -16,6 +16,8 @@ Agent → Pevier → Policy Engine → Circuit Breaker → Platform Adapter
 - Per-user encrypted Instagram access tokens
 - Safe publication dry runs that send nothing to Meta
 - Explicit-confirmation public Reel publishing
+- Bluesky OAuth with encrypted per-user sessions and no stored app passwords
+- Policy previews and explicit-confirmation public Bluesky text posts
 - Temporary Reel transfer through Vercel Blob with cleanup after Meta imports the file
 - Portfolio policy enforcement and deterministic risk scoring
 - Agent, channel, platform, and portfolio circuit states
@@ -30,11 +32,11 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), continue with Google, and then connect Instagram from Settings. Publishing starts in `DRY_RUN`; Meta receives nothing until the operator selects Live public, chooses a Reel, and confirms the public write.
+Open [http://localhost:3000](http://localhost:3000), continue with Google, and then connect Instagram or Bluesky from Settings. Publishing starts in `DRY_RUN`; no platform receives content until the operator selects Live public and confirms the write.
 
 The `predev` setup creates `.env` from `.env.example`, generates Prisma, prepares the local database, and seeds a new workspace when needed.
 
-## Configure login and connect Instagram
+## Configure login and social platforms
 
 Create a Google OAuth web client that requests only `openid`, `email`, and `profile`. Register `http://localhost:3000/api/auth/google/callback` as an authorised redirect URI. Then configure an Instagram API app with Instagram Login and set:
 
@@ -47,19 +49,21 @@ INSTAGRAM_APP_SECRET=""
 INSTAGRAM_REDIRECT_URI="http://localhost:3000/api/platforms/instagram/callback"
 PEVIER_ENCRYPTION_KEY=""
 BLOB_READ_WRITE_TOKEN=""
+BLUESKY_PUBLIC_URL="http://localhost:3000"
+BLUESKY_OAUTH_PRIVATE_KEY=""
 ```
 
-Google sign-in creates the Pevier browser session and does not request YouTube permissions or store a Google access token. After login, each user can connect their own Instagram Business or Creator account; that Instagram connection remains separate and encrypted.
+Google sign-in creates the Pevier browser session and does not request YouTube permissions or store a Google access token. After login, each user can connect their own Instagram Business or Creator account and their own Bluesky/AT Protocol account; both connections remain separate and encrypted. Bluesky uses OAuth client metadata, PKCE, and DPoP and never asks Pevier for the account password.
 
 ## Connect a production publishing agent
 
-Create an account API key in **Settings → Publisher bridge**, store it in your agent's secret manager, and use the connected Instagram agent and channel IDs. The bundled CLI accepts real metadata:
+Create an account API key in **Settings → Publisher bridge**, store it in your agent's secret manager, and use the connected platform's agent and channel IDs. The bundled CLI accepts real metadata:
 
 ```bash
 npm run agent:publish -- "Post title" "Post content"
 ```
 
-The agent submits metadata through `POST /api/publish`. Every request is owner-scoped, recorded, and policy evaluated. An agent key cannot read Instagram OAuth credentials or confirm a public Reel; media upload and public confirmation remain operator actions in Pevier.
+The agent submits metadata through `POST /api/publish`. Every request is owner-scoped, recorded, and policy evaluated. An agent key cannot read social OAuth credentials or confirm a public write; confirmation remains an operator action in Pevier.
 
 ## Active API
 
@@ -75,6 +79,12 @@ GET        /api/platforms/instagram/connect
 GET        /api/platforms/instagram/callback
 POST       /api/platforms/instagram/publish
 POST       /api/platforms/instagram/upload
+GET/PATCH/DELETE /api/platforms/bluesky
+GET        /api/platforms/bluesky/connect
+GET        /api/platforms/bluesky/callback
+GET        /api/platforms/bluesky/client-metadata
+GET        /api/platforms/bluesky/jwks
+POST       /api/platforms/bluesky/publish
 GET        /api/status
 GET        /api/portfolio
 GET        /api/incidents

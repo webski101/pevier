@@ -6,6 +6,7 @@ import { transitionCircuit } from "@/lib/circuit-breaker";
 import { hashAuditRecord } from "@/lib/audit";
 import { getCurrentUser } from "@/lib/session";
 import { getInstagramStatus } from "@/lib/instagram";
+import { getBlueskyStatus } from "@/lib/bluesky";
 import type { CircuitStatus } from "@/lib/types";
 
 const schema = z.object({ scope: z.enum(["portfolio", "agent", "channel", "platform"]), scopeId: z.string(), state: z.enum(["RUNNING", "PAUSED", "HALTED", "KILLED"]), reason: z.string().optional() });
@@ -16,9 +17,11 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Circuit transition failed validation." }, { status: 400 });
   if (user) {
-    const instagram = await getInstagramStatus(user.id);
-    const ownsScope = (parsed.data.scope === "agent" && parsed.data.scopeId === instagram.agentId)
-      || (parsed.data.scope === "channel" && parsed.data.scopeId === instagram.channelId);
+    const [instagram, bluesky] = await Promise.all([getInstagramStatus(user.id), getBlueskyStatus(user.id)]);
+    const ownedAgentIds = [instagram.agentId, bluesky.agentId].filter(Boolean);
+    const ownedChannelIds = [instagram.channelId, bluesky.channelId].filter(Boolean);
+    const ownsScope = (parsed.data.scope === "agent" && ownedAgentIds.includes(parsed.data.scopeId))
+      || (parsed.data.scope === "channel" && ownedChannelIds.includes(parsed.data.scopeId));
     if (!ownsScope) return NextResponse.json({ error: "That circuit does not belong to the signed-in user." }, { status: 403 });
   }
   const current = await db.circuitState.findUnique({ where: { scope_scopeId: { scope: parsed.data.scope, scopeId: parsed.data.scopeId } } });

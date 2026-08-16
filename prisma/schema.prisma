@@ -8,32 +8,50 @@ datasource db {
 }
 
 model User {
-  id            String               @id @default(cuid())
-  googleSubject String               @unique
-  email         String               @unique
-  name          String?
-  avatarUrl     String?
-  sessions      UserSession[]
-  agentCredentials AgentCredential[]
-  connections   PlatformConnection[]
-  posts         Post[]
-  auditRecords  AuditRecord[]
-  policySettings PolicySetting[]
-  incidents      Incident[]
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  id                   String                @id @default(cuid())
+  googleSubject        String                @unique
+  email                String                @unique
+  name                 String?
+  avatarUrl            String?
+  sessions             UserSession[]
+  agentCredentials     AgentCredential[]
+  blueskyOAuthSessions BlueskyOAuthSession[]
+  connections          PlatformConnection[]
+  posts                Post[]
+  auditRecords         AuditRecord[]
+  policySettings       PolicySetting[]
+  incidents            Incident[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+}
+
+model BlueskyOAuthState {
+  key           String   @id
+  dataEncrypted String
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model BlueskyOAuthSession {
+  did           String   @id
+  userId        String?  @unique
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dataEncrypted String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model AgentCredential {
-  id         String    @id @default(cuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  label      String    @default("Production agent")
-  tokenHash  String    @unique
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label       String    @default("Production agent")
+  tokenHash   String    @unique
   tokenPrefix String
-  lastUsedAt DateTime?
-  revokedAt  DateTime?
-  createdAt  DateTime  @default(now())
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
 
   @@index([userId, createdAt])
 }
@@ -50,15 +68,15 @@ model UserSession {
 }
 
 model Agent {
-  id        String   @id
-  name      String
-  state     String   @default("RUNNING")
-  risk      Int      @default(0)
-  postsToday Int     @default(0)
-  blocks    Int      @default(0)
-  channels  Channel[]
-  posts     Post[]
-  createdAt DateTime @default(now())
+  id         String    @id
+  name       String
+  state      String    @default("RUNNING")
+  risk       Int       @default(0)
+  postsToday Int       @default(0)
+  blocks     Int       @default(0)
+  channels   Channel[]
+  posts      Post[]
+  createdAt  DateTime  @default(now())
 }
 
 model Channel {
@@ -75,61 +93,61 @@ model Channel {
 }
 
 model Post {
-  id                String   @id
+  id                String    @id
   title             String
-  description       String   @default("")
+  description       String    @default("")
   contentText       String
   platform          String
   status            String
   decision          String?
-  riskScore         Int      @default(0)
-  syntheticMedia    Boolean  @default(false)
-  targetRegionsJson String   @default("[]")
-  policyResultsJson String   @default("[]")
+  riskScore         Int       @default(0)
+  syntheticMedia    Boolean   @default(false)
+  targetRegionsJson String    @default("[]")
+  policyResultsJson String    @default("[]")
   scheduledAt       DateTime?
-  createdAt         DateTime @default(now())
+  createdAt         DateTime  @default(now())
   agentId           String
   channelId         String
   userId            String?
-  agent             Agent    @relation(fields: [agentId], references: [id])
-  channel           Channel  @relation(fields: [channelId], references: [id])
-  user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent             Agent     @relation(fields: [agentId], references: [id])
+  channel           Channel   @relation(fields: [channelId], references: [id])
+  user              User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
 }
 
 model Incident {
-  id           String   @id
-  title        String
-  severity     String
-  source       String
-  affectedPosts Int
+  id               String   @id
+  title            String
+  severity         String
+  source           String
+  affectedPosts    Int
   affectedChannels Int
-  action       String
-  status       String
-  timelineJson String
-  userId       String?
-  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
+  action           String
+  status           String
+  timelineJson     String
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
 
   @@index([userId, createdAt])
 }
 
 model AuditRecord {
-  id          String   @id
-  timestamp   DateTime @default(now())
-  actor       String
-  agentId     String?
-  channelId   String?
-  platform    String?
-  action      String
-  decision    String?
-  riskScore   Int?
-  policyResultsJson String @default("[]")
-  previousHash String
-  hash        String
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String   @id
+  timestamp         DateTime @default(now())
+  actor             String
+  agentId           String?
+  channelId         String?
+  platform          String?
+  action            String
+  decision          String?
+  riskScore         Int?
+  policyResultsJson String   @default("[]")
+  previousHash      String
+  hash              String
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, timestamp])
 }
@@ -141,6 +159,7 @@ model CircuitState {
   state     String
   reason    String?
   updatedAt DateTime @updatedAt
+
   @@unique([scope, scopeId])
 }
 
@@ -162,8 +181,8 @@ model PolicySetting {
 model PlatformConnection {
   id                    String   @id
   platform              String
-  userId                 String?
-  user                   User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String?
+  user                  User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   status                String   @default("CONNECTED")
   mode                  String   @default("DRY_RUN")
   accountLabel          String?

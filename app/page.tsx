@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Bot, Check, Fingerprint, Instagram, Shield, SlidersHorizontal, Youtube } from "lucide-react";
+import { ArrowRight, Bot, Check, Cloud, Fingerprint, Shield, SlidersHorizontal, Youtube } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
           {authMessage && <div className="auth-notice" role="status"><Shield size={15} /><span>{authMessage}</span></div>}
           <p><span /> AUTONOMOUS PUBLISHING FIREWALL</p>
           <h1>Control what autonomous publishers can post.</h1>
-          <p className="public-hero__lede">Pevier evaluates every autonomous publication request, blocks unsafe actions, publishes approved Instagram Reels, and preserves verifiable audit evidence.</p>
+          <p className="public-hero__lede">Pevier evaluates every autonomous publication request, blocks unsafe actions, publishes approved Instagram Reels and Bluesky posts, and preserves verifiable audit evidence.</p>
           <div className="public-hero__actions">{user ? <Link className="button button--primary" href="/control-room"><Shield size={18} />Open control room</Link> : <Link className="button button--primary google-auth-button" href="/api/auth/google/connect"><Image src="/google-mark.svg" alt="" width={18} height={18} />Continue with Google</Link>}<Link className="button button--quiet" href="#how-it-works">See how it works <ArrowRight size={17} /></Link></div>
           <small><Check size={14} /> {user ? `Signed in as ${user.email}` : "New here? Google creates your Pevier account automatically. No YouTube access requested."}</small>
         </div>
@@ -45,7 +45,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
           <div className="public-gateway" aria-label="Pevier publishing enforcement flow">
             <div><Bot size={18} /><span>Autonomous agent<small>Requests publication</small></span></div><i><ArrowRight size={16} /></i>
             <div className="is-active"><Shield size={19} /><span>Pevier<small>Evaluates policy</small></span></div><i><ArrowRight size={16} /></i>
-            <div><Instagram size={19} /><span>Instagram<small>Confirmed Reel publishing</small></span></div>
+            <div><Cloud size={19} /><span>Social adapters<small>Instagram + Bluesky</small></span></div>
             <footer><span>ALLOW</span><span>HOLD</span><span>BLOCK</span></footer>
           </div>
           <div className="public-roadmap" aria-label="Upcoming platform adapters">

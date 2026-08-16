@@ -1,16 +1,18 @@
 # Pevier public release checklist
 
-Pevier uses Google basic identity sign-in as its user boundary. Instagram is connected only after login; its tokens are encrypted per user, and posts, policies, incidents, status, portfolio data, and audit chains are owner-scoped.
+Pevier uses Google basic identity sign-in as its user boundary. Instagram and Bluesky are connected only after login; their OAuth data is encrypted per user, and posts, policies, incidents, status, portfolio data, and audit chains are owner-scoped.
 
 ## Before public traffic
 
 - Use hosted PostgreSQL and apply the Prisma schema.
-- Store `GOOGLE_AUTH_CLIENT_SECRET`, `INSTAGRAM_APP_SECRET`, `PEVIER_ENCRYPTION_KEY`, `PEVIER_AGENT_KEY`, `BLOB_READ_WRITE_TOKEN`, and database credentials only in encrypted host settings.
+- Store `GOOGLE_AUTH_CLIENT_SECRET`, `INSTAGRAM_APP_SECRET`, `BLUESKY_OAUTH_PRIVATE_KEY`, `PEVIER_ENCRYPTION_KEY`, `PEVIER_AGENT_KEY`, `BLOB_READ_WRITE_TOKEN`, and database credentials only in encrypted host settings.
 - Create a dedicated Google OAuth web client with only `openid`, `email`, and `profile`; set `GOOGLE_AUTH_REDIRECT_URI` to `https://YOUR-DOMAIN/api/auth/google/callback` and register the exact URI in Google Cloud.
 - Register and verify the production homepage domain in Google Search Console if Google requests brand verification. YouTube scopes are not required.
 - Set `INSTAGRAM_REDIRECT_URI` to `https://YOUR-DOMAIN/api/platforms/instagram/callback` and register that exact URI in Meta.
 - Complete any Meta access review required for Professional accounts outside the app roles.
 - Keep Instagram in `DRY_RUN` by default. Every live Reel requires explicit public confirmation.
+- Set `BLUESKY_PUBLIC_URL` to the canonical HTTPS origin, expose the client metadata and JWKS routes without redirects, and keep Bluesky in `DRY_RUN` by default.
+- Confirm the OAuth private key is ES256/P-256 and never appears in source, browser output, or logs.
 - Set a strong `PEVIER_AGENT_KEY` before exposing `POST /api/publish` beyond localhost.
 - Confirm temporary Reel files are deleted after Meta imports them.
 
@@ -30,4 +32,4 @@ Confirm secrets, local databases, build output, and logs are ignored before push
 git check-ignore .env prisma/dev.db .next
 ```
 
-YouTube and X are not part of the current release. No OAuth or publishing routes are exposed for either platform, and the interface labels both adapters **Coming soon**.
+YouTube and X are not part of the current release. No OAuth or publishing routes are exposed for either platform, and the interface labels both adapters **Coming soon**. Bluesky is live through AT Protocol OAuth and does not require a platform app registration.

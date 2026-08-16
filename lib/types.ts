@@ -6,7 +6,7 @@ export type PlatformMode = "READ_ONLY" | "DRY_RUN" | "LIVE";
 export interface PublishRequest {
   agentId: string;
   channelId: string;
-  platform: "youtube" | "instagram" | "mock";
+  platform: "youtube" | "instagram" | "bluesky" | "mock";
   title: string;
   description?: string;
   contentText: string;
@@ -91,5 +91,9 @@ export interface PlatformDelivery {
     publicConfirmation: boolean;
     shareToFeed: boolean;
     videoUrl?: string;
+  };
+  bluesky?: {
+    userId: string;
+    publicConfirmation: boolean;
   };
 }

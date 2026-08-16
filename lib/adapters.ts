@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { uploadPrivateYouTubeVideo } from "./youtube";
 import { publishInstagramReel } from "./instagram";
+import { publishBlueskyPost } from "./bluesky";
 import type { PlatformDelivery, PlatformMode, PublishRequest } from "./types";
 
 export type PublicationResult = {
@@ -73,10 +74,24 @@ export class InstagramAdapter implements PlatformAdapter {
     return { published: true, mode: "LIVE", externalId: result.id, visibility: "public" };
   }
 }
+
+export class BlueskyAdapter implements PlatformAdapter {
+  constructor(private mode: PlatformMode = "DRY_RUN") {}
+  async getPublishingLimits() { return { used: 0, limit: 100, source: "Pevier-observed Bluesky publications" }; }
+  async validateCredentials() { return this.mode !== "LIVE"; }
+  async publish(request: PublishRequest, delivery?: PlatformDelivery): Promise<PublicationResult> {
+    if (this.mode !== "LIVE") return { published: false, mode: "DRY_RUN", reason: "DRY_RUN" };
+    if (!delivery?.bluesky?.userId) return { published: false, mode: "LIVE", reason: "USER_SESSION_REQUIRED" };
+    if (!delivery.bluesky.publicConfirmation) return { published: false, mode: "LIVE", reason: "PUBLIC_CONFIRMATION_REQUIRED" };
+    const result = await publishBlueskyPost(delivery.bluesky.userId, request.contentText);
+    return { published: true, mode: "LIVE", externalId: result.uri, visibility: "public" };
+  }
+}
 export class MockAdapter extends DryRunAdapter { constructor(mode: PlatformMode = "DRY_RUN") { super("mock", mode); } }
 
 export function getAdapter(platform: string, mode: PlatformMode = "DRY_RUN"): PlatformAdapter {
   if (platform === "youtube") return new YouTubeAdapter(mode);
   if (platform === "instagram") return new InstagramAdapter(mode);
+  if (platform === "bluesky") return new BlueskyAdapter(mode);
   return new MockAdapter(mode);
 }

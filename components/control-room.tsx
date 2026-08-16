@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { upload as uploadBlob } from "@vercel/blob/client";
-import { Activity, AlertTriangle, ArrowRight, Bot, Check, ChevronRight, CircleStop, Command, Copy, Fingerprint, Gauge, Globe2, Instagram, LayoutDashboard, ListChecks, LoaderCircle, LogOut, Menu, Moon, Network, RadioTower, Search, Settings, Shield, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, TerminalSquare, Trash2, Unplug, Upload, X, Youtube } from "lucide-react";
+import { Activity, AlertTriangle, ArrowRight, Bot, Check, ChevronRight, CircleStop, Cloud, Command, Copy, Fingerprint, Gauge, Globe2, Instagram, LayoutDashboard, ListChecks, LoaderCircle, LogOut, Menu, Moon, Network, RadioTower, Search, Send, Settings, Shield, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, TerminalSquare, Trash2, Unplug, Upload, X, Youtube } from "lucide-react";
 import { instagramUploadPath, isSupportedInstagramVideo, MAX_INSTAGRAM_VIDEO_BYTES } from "@/lib/instagram-media";
 import type { CircuitStatus } from "@/lib/types";
 
 type View = "Overview" | "Publish Queue" | "Portfolio" | "Policies" | "Incidents" | "Audit Log" | "Settings";
 type InstagramStatus = { configured: boolean; connected: boolean; authenticated: boolean; status: string; mode: "DRY_RUN" | "LIVE"; accountId: string | null; username: string | null; accountType: string | null; accountLabel: string | null; channelId: string | null; agentId: string | null; tokenExpiresAt: string | null; tokenStoredServerSide: true; publishingImplemented: true; professionalOnly: true; publicOnly: true; safetyLock: string; accessLevel: string; lastError: string | null };
+type BlueskyStatus = { configured: boolean; connected: boolean; authenticated: boolean; status: string; mode: "DRY_RUN" | "LIVE"; did: string | null; handle: string | null; accountLabel: string | null; channelId: string | null; agentId: string | null; oauthManaged: true; appPasswordStored: false; platformReviewRequired: false; safetyLock: string; lastError: string | null };
 type AgentGatewayStatus = { ready: boolean; accessMode: "ACCOUNT_KEY" | "LOCAL_ONLY" | "KEY_REQUIRED"; endpoint: string; credentialsIsolated: true; credentialCount: number; lastDecision: { id: string; timestamp: string; agentId: string | null; channelId: string | null; action: string; decision: string | null; riskScore: number | null } | null };
 type AuditRecord = { id: string; timestamp: string; actor: string; agentId: string | null; channelId: string | null; channelName: string | null; platform: string | null; action: string; decision: string | null; riskScore: number | null; violationCount: number; previousHash: string; hash: string };
 type AuditPayload = { records: AuditRecord[]; verification: { valid: boolean; checked?: number; index?: number } };
@@ -18,7 +19,7 @@ type PortfolioPayload = {
   agents: Array<{ id: string; name: string; state: string; risk: number; postsToday: number; blocks: number; channels: Array<{ id: string }> }>;
 };
 type IncidentRecord = { id: string; title: string; severity: string; source: string; affectedPosts: number; affectedChannels: number; action: string; status: string; createdAt: string; timeline: Array<[string, string, string?]> };
-type StatusPayload = { portfolio: string; agents: Array<{ id: string; state: string; risk: number }>; pending: number; mode: "DRY_RUN" | "LIVE"; connected: boolean; agentGateway: AgentGatewayStatus };
+type StatusPayload = { portfolio: string; agents: Array<{ id: string; state: string; risk: number }>; pending: number; mode: "DRY_RUN" | "LIVE"; connected: boolean; connectedPlatforms: string[]; agentGateway: AgentGatewayStatus };
 type AgentCredential = { id: string; label: string; tokenPrefix: string; createdAt: string; lastUsedAt: string | null };
 const nav: { label: View; icon: typeof Activity }[] = [
   { label: "Overview", icon: LayoutDashboard }, { label: "Publish Queue", icon: ListChecks }, { label: "Portfolio", icon: Network },
@@ -53,6 +54,7 @@ export function ControlRoom({ user }: { user: { name: string | null; email: stri
   const [policies, setPolicies] = useState(initialPolicies);
   const [saved, setSaved] = useState<string | null>(null);
   const [instagramStatus, setInstagramStatus] = useState<InstagramStatus | null>(null);
+  const [blueskyStatus, setBlueskyStatus] = useState<BlueskyStatus | null>(null);
   const [status, setStatus] = useState<StatusPayload | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioPayload>({ channels: [], agents: [] });
   const [publications, setPublications] = useState<PublicationRecord[]>([]);
@@ -65,10 +67,10 @@ export function ControlRoom({ user }: { user: { name: string | null; email: stri
   const loadControlRoom = useCallback(async () => {
     setDashboardLoading(true); setDashboardError(null); setAuditError(null);
     try {
-      const responses = await Promise.all(["/api/status", "/api/portfolio", "/api/posts", "/api/incidents", "/api/audit", "/api/policies", "/api/platforms/instagram"].map((url) => fetch(url, { cache: "no-store" })));
+      const responses = await Promise.all(["/api/status", "/api/portfolio", "/api/posts", "/api/incidents", "/api/audit", "/api/policies", "/api/platforms/instagram", "/api/platforms/bluesky"].map((url) => fetch(url, { cache: "no-store" })));
       if (responses.some((response) => !response.ok)) throw new Error("One or more live control-room services did not respond.");
-      const [nextStatus, nextPortfolio, nextPosts, nextIncidents, nextAudit, policyOverrides, nextInstagram] = await Promise.all(responses.map((response) => response.json())) as [StatusPayload, PortfolioPayload, PublicationRecord[], IncidentRecord[], AuditPayload, Array<{ policyId: string; enabled: boolean; warnAt: number | null; holdAt: number | null; blockAt: number | null }>, InstagramStatus];
-      setStatus(nextStatus); setPortfolio(nextPortfolio); setPublications(nextPosts); setIncidents(nextIncidents); setAuditRecords(nextAudit.records); setInstagramStatus(nextInstagram);
+      const [nextStatus, nextPortfolio, nextPosts, nextIncidents, nextAudit, policyOverrides, nextInstagram, nextBluesky] = await Promise.all(responses.map((response) => response.json())) as [StatusPayload, PortfolioPayload, PublicationRecord[], IncidentRecord[], AuditPayload, Array<{ policyId: string; enabled: boolean; warnAt: number | null; holdAt: number | null; blockAt: number | null }>, InstagramStatus, BlueskyStatus];
+      setStatus(nextStatus); setPortfolio(nextPortfolio); setPublications(nextPosts); setIncidents(nextIncidents); setAuditRecords(nextAudit.records); setInstagramStatus(nextInstagram); setBlueskyStatus(nextBluesky);
       setPolicies(initialPolicies.map((policy) => { const override = policyOverrides.find((item) => item.policyId === policy.id); return override ? { ...policy, enabled: override.enabled, warnAt: override.warnAt ?? policy.warnAt, holdAt: override.holdAt ?? policy.holdAt, blockAt: override.blockAt ?? policy.blockAt } : policy; }));
     } catch (error) {
       setDashboardError(error instanceof Error ? error.message : "Live control-room data could not be loaded.");
@@ -101,9 +103,9 @@ export function ControlRoom({ user }: { user: { name: string | null; email: stri
   const stopPublicPublishing = async () => {
     setEmergencyBusy(true);
     try {
-      const response = await fetch("/api/platforms/instagram", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode: "DRY_RUN" }) });
-      if (!response.ok) throw new Error("Public publishing could not be stopped.");
-      setInstagramStatus(await response.json());
+      const targets = [instagramStatus?.connected ? "/api/platforms/instagram" : null, blueskyStatus?.connected ? "/api/platforms/bluesky" : null].filter((value): value is string => Boolean(value));
+      const responses = await Promise.all(targets.map((url) => fetch(url, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode: "DRY_RUN" }) })));
+      if (responses.some((response) => !response.ok)) throw new Error("Public publishing could not be stopped on every connected platform.");
       await loadControlRoom();
       setEmergencyConfirm(false);
     } finally { setEmergencyBusy(false); }
@@ -115,34 +117,37 @@ export function ControlRoom({ user }: { user: { name: string | null; email: stri
 
   return <div className="app-shell">
     <aside className={`side-rail ${mobileNav ? "is-open" : ""}`}><div className="brand"><div className="brand__mark"><Shield size={17} /></div><div><strong>PEVIER</strong><span>POLICY FIREWALL</span></div></div><nav>{nav.map((item) => <button key={item.label} className={`nav-item ${view === item.label ? "is-active" : ""}`} onClick={() => choose(item.label)}><item.icon size={17} /><span>{item.label}</span>{item.label === "Incidents" && incidents.length > 0 && <i>{incidents.length}</i>}</button>)}</nav><div className="rail-foot"><div className="connection"><span className={dashboardError ? "offline-dot" : "live-dot"} />{dashboardError ? "Gateway unavailable" : "Gateway online"}</div><button className="command-button" onClick={() => setCommandOpen(true)}><Command size={14} /><span>Command</span><kbd>⌘K</kbd></button><div className="workspace"><div className="avatar">{initials}</div><span title={user.email}>{displayName}<small>{user.email}</small></span><form action="/api/auth/logout" method="post"><button type="submit" className="workspace__logout" aria-label="Log out" title="Log out"><LogOut size={15} /></button></form></div></div></aside>
-    <div className="app-main"><header className="topbar"><button className="icon-button mobile-menu" onClick={() => setMobileNav((v) => !v)} aria-label="Open navigation">{mobileNav ? <X /> : <Menu />}</button><div><span>PEVIER /</span><strong>{view}</strong></div><div className="topbar__actions"><Badge tone={instagramStatus?.connected && instagramStatus.mode === "LIVE" ? "warn" : "neutral"}><span className={instagramStatus?.connected ? "live-dot" : "offline-dot"} /> {instagramStatus?.connected ? instagramStatus.mode === "LIVE" ? "INSTAGRAM LIVE" : "INSTAGRAM DRY RUN" : "INSTAGRAM DISCONNECTED"}</Badge><button className="icon-button" onClick={() => setDark((v) => !v)} aria-label="Change theme">{dark ? <Sun size={17} /> : <Moon size={17} />}</button><button className="emergency-small" onClick={() => setEmergencyConfirm(true)} disabled={instagramStatus?.mode !== "LIVE"}><CircleStop size={15} />Stop publishing</button></div></header><main>
+    <div className="app-main"><header className="topbar"><button className="icon-button mobile-menu" onClick={() => setMobileNav((v) => !v)} aria-label="Open navigation">{mobileNav ? <X /> : <Menu />}</button><div><span>PEVIER /</span><strong>{view}</strong></div><div className="topbar__actions"><Badge tone={instagramStatus?.connected && instagramStatus.mode === "LIVE" ? "warn" : "neutral"}><span className={instagramStatus?.connected ? "live-dot" : "offline-dot"} /> {instagramStatus?.connected ? instagramStatus.mode === "LIVE" ? "INSTAGRAM LIVE" : "INSTAGRAM DRY RUN" : "INSTAGRAM OFF"}</Badge><Badge tone={blueskyStatus?.connected && blueskyStatus.mode === "LIVE" ? "warn" : "neutral"}><span className={blueskyStatus?.connected ? "live-dot" : "offline-dot"} /> {blueskyStatus?.connected ? blueskyStatus.mode === "LIVE" ? "BLUESKY LIVE" : "BLUESKY DRY RUN" : "BLUESKY OFF"}</Badge><button className="icon-button" onClick={() => setDark((v) => !v)} aria-label="Change theme">{dark ? <Sun size={17} /> : <Moon size={17} />}</button><button className="emergency-small" onClick={() => setEmergencyConfirm(true)} disabled={instagramStatus?.mode !== "LIVE" && blueskyStatus?.mode !== "LIVE"}><CircleStop size={15} />Stop publishing</button></div></header><main>
       {dashboardError && <div className="global-error" role="alert"><AlertTriangle size={17} /><span>{dashboardError}</span><button onClick={() => void loadControlRoom()}>Retry</button></div>}
-      {view === "Overview" && <Overview status={status} portfolio={portfolio} publications={publications} incidents={incidents} audits={auditRecords} activePolicies={policies.filter((p) => p.enabled).length} instagram={instagramStatus} loading={dashboardLoading} onSettings={() => choose("Settings")} onAudit={() => choose("Audit Log")} />}
+      {view === "Overview" && <Overview status={status} portfolio={portfolio} publications={publications} incidents={incidents} audits={auditRecords} activePolicies={policies.filter((p) => p.enabled).length} instagram={instagramStatus} bluesky={blueskyStatus} loading={dashboardLoading} onSettings={() => choose("Settings")} onAudit={() => choose("Audit Log")} />}
       {view === "Publish Queue" && <PublishQueue posts={publications} loading={dashboardLoading} onSelect={setSelectedPost} />}
       {view === "Portfolio" && <Portfolio data={portfolio} loading={dashboardLoading} onSettings={() => choose("Settings")} />}
       {view === "Policies" && <Policies items={policies} setItems={setPolicies} saved={saved} setSaved={setSaved} />}
       {view === "Incidents" && <Incidents incidents={incidents} loading={dashboardLoading} />}
       {view === "Audit Log" && <AuditLog records={auditRecords} loading={auditLoading || dashboardLoading} error={auditError} verification={verification} onVerify={verify} onRetry={verify} />}
-      {view === "Settings" && <SettingsView activePolicies={policies.filter((p) => p.enabled).length} instagram={instagramStatus} onInstagramChange={setInstagramStatus} onActivity={loadControlRoom} />}
-    </main><footer className="foot-line"><span>PEVIER / POLICY CONTROL PLANE</span><span>Policy set v1.4 · SHA-256 evidence · {instagramStatus?.connected && instagramStatus.mode === "LIVE" ? "INSTAGRAM LIVE" : "DRY RUN"}</span><span><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span></footer></div>
+      {view === "Settings" && <SettingsView activePolicies={policies.filter((p) => p.enabled).length} instagram={instagramStatus} bluesky={blueskyStatus} onInstagramChange={setInstagramStatus} onBlueskyChange={setBlueskyStatus} onActivity={loadControlRoom} />}
+    </main><footer className="foot-line"><span>PEVIER / POLICY CONTROL PLANE</span><span>Policy set v1.4 · SHA-256 evidence · {instagramStatus?.mode === "LIVE" || blueskyStatus?.mode === "LIVE" ? "PUBLIC LIVE" : "DRY RUN"}</span><span><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span></footer></div>
     {commandOpen && <div className="modal-backdrop" onMouseDown={() => setCommandOpen(false)}><section className="command-palette" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><div className="command-search"><Search size={18} /><input ref={commandInput} placeholder="Go to a control surface…" /></div>{nav.map((item) => <button key={item.label} onClick={() => choose(item.label)}><item.icon size={17} /><span>Open {item.label}</span><ArrowRight size={15} /></button>)}</section></div>}
-    {emergencyConfirm && <div className="modal-backdrop" onMouseDown={() => setEmergencyConfirm(false)}><section className="confirm-dialog" role="alertdialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><div className="danger-icon"><CircleStop /></div><h2>Stop public Instagram publishing?</h2><p>Pevier will immediately return this account to dry-run mode. Existing Instagram posts will not be changed.</p><div><button className="button button--quiet" onClick={() => setEmergencyConfirm(false)}>Cancel</button><button className="button button--danger" onClick={() => void stopPublicPublishing()} disabled={emergencyBusy}>{emergencyBusy ? <LoaderCircle className="spin" size={16} /> : <CircleStop size={16} />}{emergencyBusy ? "Stopping…" : "Stop public publishing"}</button></div></section></div>}
+    {emergencyConfirm && <div className="modal-backdrop" onMouseDown={() => setEmergencyConfirm(false)}><section className="confirm-dialog" role="alertdialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><div className="danger-icon"><CircleStop /></div><h2>Stop all public publishing?</h2><p>Pevier will immediately return every connected platform to dry-run mode. Existing social posts will not be changed.</p><div><button className="button button--quiet" onClick={() => setEmergencyConfirm(false)}>Cancel</button><button className="button button--danger" onClick={() => void stopPublicPublishing()} disabled={emergencyBusy}>{emergencyBusy ? <LoaderCircle className="spin" size={16} /> : <CircleStop size={16} />}{emergencyBusy ? "Stopping…" : "Stop public publishing"}</button></div></section></div>}
     {selectedPost && <DecisionDrawer post={selectedPost} onClose={() => setSelectedPost(null)} />}
   </div>;
 }
 
-function Overview({ status, portfolio, publications, incidents, audits, activePolicies, instagram, loading, onSettings, onAudit }: { status: StatusPayload | null; portfolio: PortfolioPayload; publications: PublicationRecord[]; incidents: IncidentRecord[]; audits: AuditRecord[]; activePolicies: number; instagram: InstagramStatus | null; loading: boolean; onSettings: () => void; onAudit: () => void }) {
+function Overview({ status, portfolio, publications, incidents, audits, activePolicies, instagram, bluesky, loading, onSettings, onAudit }: { status: StatusPayload | null; portfolio: PortfolioPayload; publications: PublicationRecord[]; incidents: IncidentRecord[]; audits: AuditRecord[]; activePolicies: number; instagram: InstagramStatus | null; bluesky: BlueskyStatus | null; loading: boolean; onSettings: () => void; onAudit: () => void }) {
   const agentState = (status?.agents[0]?.state ?? "RUNNING") as CircuitStatus;
   const risk = status?.agentGateway.lastDecision?.riskScore ?? Math.max(0, ...status?.agents.map((agent) => agent.risk) ?? [0]);
   const tone = agentState === "RUNNING" ? "safe" : agentState === "PAUSED" ? "warn" : "danger";
   const recentEvents = audits.slice(0, 6);
   const blocks = publications.filter((post) => post.decision === "BLOCK").length;
   const latestIncident = incidents[0];
-  return <div className="page control-room reveal"><section className="page-intro"><div><p className="context-line"><RadioTower size={14} /> LIVE CONTROL ROOM</p><h1>Control Room</h1></div><p className="page-intro__lede">Real publication requests, policy decisions, and Instagram state for this signed-in account.</p><div className="intro-actions">{instagram?.connected ? <button className="button button--quiet" onClick={onAudit}><Fingerprint size={17} />Review evidence</button> : <button className="button button--primary" onClick={onSettings}><Instagram size={17} />Connect Instagram</button>}</div></section>
-    <section className="metric-strip">{[[String(portfolio.channels.length), "Connected channels"], [String(portfolio.agents.length), "Authorized agents"], [String(status?.pending ?? 0), "Pending or held"], [String(blocks), "Blocked requests"]].map(([v, l]) => <div key={l}><strong>{loading ? "—" : v}</strong><span>{l}</span></div>)}<div className="quota"><span>Instagram connection</span><strong>{instagram?.connected ? instagram.mode === "LIVE" ? "PUBLIC LIVE" : "DRY RUN" : "NOT CONNECTED"}</strong><i><b style={{ width: instagram?.connected ? "100%" : "0%" }} /></i><small>{instagram?.accountLabel ?? "Connect an account in Settings"}</small></div></section>
-    <section className="gateway-route" aria-label="Publishing enforcement path"><div><Bot size={17} /><span>Autonomous agents<small>{portfolio.agents.length} authorized</small></span></div><ArrowRight /><div className="gateway-route__active"><Shield size={18} /><span>Pevier gateway<small>{status?.agentGateway.ready ? "Authenticated" : "Awaiting account key"}</small></span></div><ArrowRight /><div><SlidersHorizontal size={17} /><span>Policy engine<small>{activePolicies} active rules</small></span></div><ArrowRight /><div><Instagram size={17} /><span>Instagram adapter<small>{instagram?.connected ? instagram.mode : "Disconnected"}</small></span></div></section>
+  const connectedPlatforms = [instagram?.connected ? "Instagram" : null, bluesky?.connected ? "Bluesky" : null].filter(Boolean);
+  const anyConnected = connectedPlatforms.length > 0;
+  const anyLive = instagram?.mode === "LIVE" || bluesky?.mode === "LIVE";
+  return <div className="page control-room reveal"><section className="page-intro"><div><p className="context-line"><RadioTower size={14} /> LIVE CONTROL ROOM</p><h1>Control Room</h1></div><p className="page-intro__lede">Real publication requests, policy decisions, and connected social-platform state for this signed-in account.</p><div className="intro-actions">{anyConnected ? <button className="button button--quiet" onClick={onAudit}><Fingerprint size={17} />Review evidence</button> : <button className="button button--primary" onClick={onSettings}><Globe2 size={17} />Connect a platform</button>}</div></section>
+    <section className="metric-strip">{[[String(portfolio.channels.length), "Connected channels"], [String(portfolio.agents.length), "Authorized agents"], [String(status?.pending ?? 0), "Pending or held"], [String(blocks), "Blocked requests"]].map(([v, l]) => <div key={l}><strong>{loading ? "—" : v}</strong><span>{l}</span></div>)}<div className="quota"><span>Publishing connections</span><strong>{anyConnected ? anyLive ? "PUBLIC LIVE" : "DRY RUN" : "NOT CONNECTED"}</strong><i><b style={{ width: anyConnected ? "100%" : "0%" }} /></i><small>{connectedPlatforms.join(" · ") || "Connect an account in Settings"}</small></div></section>
+    <section className="gateway-route" aria-label="Publishing enforcement path"><div><Bot size={17} /><span>Autonomous agents<small>{portfolio.agents.length} authorized</small></span></div><ArrowRight /><div className="gateway-route__active"><Shield size={18} /><span>Pevier gateway<small>{status?.agentGateway.ready ? "Authenticated" : "Awaiting account key"}</small></span></div><ArrowRight /><div><SlidersHorizontal size={17} /><span>Policy engine<small>{activePolicies} active rules</small></span></div><ArrowRight /><div><Globe2 size={17} /><span>Platform adapters<small>{connectedPlatforms.join(" + ") || "Disconnected"}</small></span></div></section>
     <div className="control-grid"><section className={`governor-panel governor-panel--${tone}`}><div className="panel-head"><div><span>ACCOUNT GOVERNOR</span><small>Database-backed state</small></div><Badge tone={tone}><span className="state-dot" /> {agentState}</Badge></div><div className="governor-main"><div><p>Current state</p><h2><span className="state-dot state-dot--large" />{agentState}</h2><span>{agentState === "RUNNING" ? "Requests may enter the policy gateway. Platform writes still require ALLOW and operator confirmation." : "The connected publishing agent requires operator attention."}</span></div><RiskDial score={risk} /></div><div className="state-path">{["RUNNING", "PAUSED", "HALTED", "KILLED"].map((stateName, index) => <span key={stateName} className={agentState === stateName ? "is-active" : ""}>{index > 0 && <i />}{stateName}</span>)}</div></section>
-      <section className="event-panel"><div className="panel-head"><div><span>DECISION STREAM</span><small>{recentEvents.length ? `${recentEvents.length} most recent records` : "Awaiting the first request"}</small></div><Activity size={18} /></div><div className="event-stream" aria-live="polite">{!recentEvents.length && <div className="empty-state"><RadioTower /><strong>No publication decisions yet</strong><span>Connect Instagram and evaluate a post to create the first live record.</span></div>}{recentEvents.map((event) => { const eventTone = event.decision === "ALLOW" ? "safe" : event.decision === "BLOCK" ? "danger" : "warn"; return <div className="event-row" key={event.id}><i className={`event-node event-node--${(event.decision ?? "state").toLowerCase()}`} /><div><strong>{event.action.replaceAll("_", " ")}</strong><span>{event.channelName ?? event.actor}</span></div><Badge tone={eventTone}>{event.decision ?? "STATE"}</Badge><time dateTime={event.timestamp}>{new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(event.timestamp))}</time></div>; })}</div></section></div>
+      <section className="event-panel"><div className="panel-head"><div><span>DECISION STREAM</span><small>{recentEvents.length ? `${recentEvents.length} most recent records` : "Awaiting the first request"}</small></div><Activity size={18} /></div><div className="event-stream" aria-live="polite">{!recentEvents.length && <div className="empty-state"><RadioTower /><strong>No publication decisions yet</strong><span>Connect a platform and evaluate a post to create the first live record.</span></div>}{recentEvents.map((event) => { const eventTone = event.decision === "ALLOW" ? "safe" : event.decision === "BLOCK" ? "danger" : "warn"; return <div className="event-row" key={event.id}><i className={`event-node event-node--${(event.decision ?? "state").toLowerCase()}`} /><div><strong>{event.action.replaceAll("_", " ")}</strong><span>{event.channelName ?? event.actor}</span></div><Badge tone={eventTone}>{event.decision ?? "STATE"}</Badge><time dateTime={event.timestamp}>{new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(event.timestamp))}</time></div>; })}</div></section></div>
     <section className={`containment ${latestIncident ? "is-contained" : ""}`}><div className="containment__head"><div><span className="context-line"><ShieldAlert size={14} /> INCIDENT STATUS</span><h2>{latestIncident ? latestIncident.title : "No incidents recorded."}</h2><p>{latestIncident ? `${latestIncident.source} · ${latestIncident.action}` : "Pevier will create an incident automatically when a request crosses a blocking policy threshold."}</p></div>{latestIncident ? <Badge tone="safe"><ShieldCheck size={14} /> {latestIncident.status.toUpperCase()}</Badge> : <Badge tone="safe"><Check size={14} /> CLEAR</Badge>}</div>{latestIncident && <div className="containment-stats"><div><strong>{latestIncident.affectedPosts}</strong><span>affected posts</span></div><div><strong>{latestIncident.affectedChannels}</strong><span>affected channels</span></div><div><strong>{incidents.length}</strong><span>total incidents</span></div></div>}</section>
   </div>;
 }
@@ -200,10 +205,11 @@ function AuditLog({ records, loading, error, verification, onVerify, onRetry }: 
   </div>;
 }
 
-function SettingsView({ activePolicies, instagram, onInstagramChange, onActivity }: { activePolicies: number; instagram: InstagramStatus | null; onInstagramChange: (status: InstagramStatus) => void; onActivity: () => Promise<void> }) {
-  const [busy, setBusy] = useState<"instagram" | null>(null);
+function SettingsView({ activePolicies, instagram, bluesky, onInstagramChange, onBlueskyChange, onActivity }: { activePolicies: number; instagram: InstagramStatus | null; bluesky: BlueskyStatus | null; onInstagramChange: (status: InstagramStatus) => void; onBlueskyChange: (status: BlueskyStatus) => void; onActivity: () => Promise<void> }) {
+  const [busy, setBusy] = useState<"instagram" | "bluesky" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [instagramResult, setInstagramResult] = useState<{ tone: string; title: string; detail: string; evidence?: string } | null>(null);
+  const [blueskyResult, setBlueskyResult] = useState<{ tone: string; title: string; detail: string; evidence?: string } | null>(null);
   const [instagramStage, setInstagramStage] = useState<"uploading" | "evaluating" | "publishing" | null>(null);
   const [instagramUploadProgress, setInstagramUploadProgress] = useState(0);
   const [agentGateway, setAgentGateway] = useState<AgentGatewayStatus | null>(null);
@@ -216,6 +222,7 @@ function SettingsView({ activePolicies, instagram, onInstagramChange, onActivity
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const instagramResult = params.get("instagram");
+    const blueskyResult = params.get("bluesky");
     const instagramMessages: Record<string, string> = {
       connected: "Instagram connected. Pevier kept public publishing locked in dry-run mode.",
       denied: "Instagram authorization was cancelled.",
@@ -225,6 +232,15 @@ function SettingsView({ activePolicies, instagram, onInstagramChange, onActivity
       "connection-failed": "Instagram could not be connected. Confirm the redirect URI, app secret, tester role, and Professional account.",
     };
     if (instagramResult && instagramMessages[instagramResult]) setNotice(instagramMessages[instagramResult]);
+    const blueskyMessages: Record<string, string> = {
+      connected: "Bluesky connected through OAuth. Pevier kept public publishing locked in dry-run mode.",
+      "missing-config": "Add the Bluesky OAuth signing key to the server before connecting.",
+      "missing-handle": "Enter your complete Bluesky handle before connecting.",
+      "invalid-state": "The Bluesky OAuth state check failed. Please try connecting again.",
+      "authorization-failed": "Bluesky could not start authorization. Confirm the handle and try again.",
+      "connection-failed": "Bluesky could not complete the OAuth connection. Nothing was stored as connected.",
+    };
+    if (blueskyResult && blueskyMessages[blueskyResult]) setNotice(blueskyMessages[blueskyResult]);
     Promise.all([fetch("/api/status", { cache: "no-store" }), fetch("/api/agent-credentials", { cache: "no-store" })])
       .then(async ([statusResponse, credentialsResponse]) => { if (!statusResponse.ok || !credentialsResponse.ok) throw new Error(); return Promise.all([statusResponse.json(), credentialsResponse.json()]); })
       .then(([data, credentials]) => { setAgentGateway(data.agentGateway); setAgentCredentials(credentials); })
@@ -281,6 +297,56 @@ function SettingsView({ activePolicies, instagram, onInstagramChange, onActivity
       setNotice("Instagram disconnected and its encrypted token was removed from Pevier.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not disconnect Instagram.");
+    } finally { setBusy(null); }
+  };
+
+  const updateBlueskyMode = async (mode: "DRY_RUN" | "LIVE") => {
+    setBusy("bluesky"); setNotice(null);
+    try {
+      const response = await fetch("/api/platforms/bluesky", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not change Bluesky mode.");
+      onBlueskyChange(data);
+      await onActivity();
+      setNotice(mode === "LIVE" ? "Bluesky live publishing is armed. Every post still needs explicit public confirmation." : "Bluesky returned to dry run. No post will be sent to the network.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not change Bluesky mode.");
+    } finally { setBusy(null); }
+  };
+
+  const disconnectBlueskyAccount = async () => {
+    setBusy("bluesky"); setNotice(null);
+    try {
+      const response = await fetch("/api/platforms/bluesky", { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not disconnect Bluesky.");
+      onBlueskyChange(data);
+      await onActivity();
+      setNotice("Bluesky disconnected and its encrypted OAuth session was removed from Pevier.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not disconnect Bluesky.");
+    } finally { setBusy(null); }
+  };
+
+  const submitBluesky = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setBusy("bluesky"); setBlueskyResult(null);
+    const form = new FormData(event.currentTarget);
+    const payload = {
+      text: String(form.get("text") ?? ""),
+      syntheticMedia: Boolean(form.get("syntheticMedia")),
+      humanEditorialReview: Boolean(form.get("humanEditorialReview")),
+      confirmPublicPublish: Boolean(form.get("confirmPublicPublish")),
+    };
+    try {
+      const response = await fetch("/api/platforms/bluesky/publish", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      const data = await response.json();
+      if (data.publication?.published) setBlueskyResult({ tone: "safe", title: "Public Bluesky post published", detail: `${data.execution?.destination ?? "Bluesky"} received the policy-approved post.`, evidence: data.decisionId });
+      else if (data.decision === "ALLOW") setBlueskyResult({ tone: response.ok ? "safe" : "danger", title: response.ok ? "Policy preview passed" : "Bluesky publish failed safely", detail: response.ok ? `${data.execution?.destination ?? "Bluesky"} received no post because this connection is in dry-run mode. The decision was recorded in Pevier.` : data.publication?.reason ?? data.error ?? "Bluesky did not confirm a published post.", evidence: data.decisionId });
+      else if (data.decision === "HOLD" || data.decision === "BLOCK") setBlueskyResult({ tone: data.decision === "BLOCK" ? "danger" : "warn", title: `${data.decision}: publication stopped`, detail: `Risk ${data.riskScore}/100. The policy firewall stopped before the Bluesky adapter.`, evidence: data.decisionId });
+      else setBlueskyResult({ tone: "danger", title: "Evaluation failed safely", detail: data.error ?? "No request was sent to Bluesky." });
+      await onActivity();
+    } catch (error) {
+      setBlueskyResult({ tone: "danger", title: "Bluesky publish failed safely", detail: error instanceof Error ? error.message : "The request could not reach Pevier. Nothing was sent to Bluesky." });
     } finally { setBusy(null); }
   };
 
@@ -342,6 +408,7 @@ function SettingsView({ activePolicies, instagram, onInstagramChange, onActivity
     }
   };
   const instagramLive = instagram?.connected && instagram.mode === "LIVE";
+  const blueskyLive = bluesky?.connected && bluesky.mode === "LIVE";
   return <div className="page reveal">
     <PageTitle icon={Settings} title="Gateway settings" copy="Connect a publisher without giving autonomous agents direct platform credentials." action={<Badge tone="safe"><span className="live-dot" /> API ONLINE</Badge>} />
     {notice && <div className="integration-notice" role="status"><Shield size={16} /><span>{notice}</span></div>}
@@ -357,6 +424,20 @@ function SettingsView({ activePolicies, instagram, onInstagramChange, onActivity
         {instagram?.configured && !instagram.connected && <a className="button button--primary" href="/api/platforms/instagram/connect"><Instagram size={17} />Connect Instagram</a>}
         {instagram?.connected && <><div className="mode-switch" aria-label="Instagram publisher mode"><button className={instagram.mode === "DRY_RUN" ? "is-active" : ""} disabled={busy !== null} onClick={() => updateInstagramMode("DRY_RUN")}>Dry run</button><button className={instagram.mode === "LIVE" ? "is-active" : ""} disabled={busy !== null} onClick={() => updateInstagramMode("LIVE")}>Live public</button></div><button className="button button--quiet" disabled={busy !== null} onClick={disconnectInstagramAccount}>{busy === "instagram" ? <LoaderCircle className="spin" size={16} /> : <Unplug size={16} />}Disconnect</button></>}
         <small>{instagramLive ? "Every live Reel requires explicit confirmation. Pevier handles the temporary media transfer." : "Standard Access works for app-role accounts. Other Professional accounts require Meta Advanced Access."}</small>
+      </div>
+    </section>
+    <section className="instagram-connection bluesky-connection">
+      <div className="platform-connection__identity"><div className="bluesky-mark"><Cloud /></div><div><span>{blueskyLive ? "LIVE PUBLIC ADAPTER" : "AT PROTOCOL ADAPTER"}</span><h2>Bluesky</h2><p>Policy-gated text publishing through account-owned OAuth.</p></div></div>
+      <div className="platform-connection__status">
+        <Badge tone={bluesky?.connected ? "safe" : bluesky?.status === "ERROR" ? "danger" : "neutral"}><span className={bluesky?.connected ? "live-dot" : "offline-dot"} /> {bluesky?.connected ? "CONNECTED" : bluesky?.status === "ERROR" ? "SESSION ERROR" : "DISCONNECTED"}</Badge>
+        <strong>{bluesky?.connected ? bluesky.accountLabel ?? bluesky.handle ?? "Bluesky account" : bluesky?.configured ? "Ready for Bluesky OAuth" : "OAuth signing key required"}</strong>
+        <small>{bluesky?.connected ? "OAuth session encrypted per user · no app password stored" : bluesky?.lastError ?? "Works with Bluesky and compatible AT Protocol accounts. No platform app review is required."}</small>
+      </div>
+      <div className="platform-connection__actions">
+        {!bluesky?.configured && <div className="config-callout"><code>BLUESKY_PUBLIC_URL</code><code>BLUESKY_OAUTH_PRIVATE_KEY</code></div>}
+        {bluesky?.configured && !bluesky.connected && <form className="bluesky-connect-form" action="/api/platforms/bluesky/connect" method="get"><label><span>Bluesky handle</span><input name="handle" required placeholder="name.bsky.social" autoComplete="username" /></label><button className="button button--primary" type="submit"><Cloud size={17} />Connect Bluesky</button></form>}
+        {bluesky?.connected && <><div className="mode-switch" aria-label="Bluesky publisher mode"><button className={bluesky.mode === "DRY_RUN" ? "is-active" : ""} disabled={busy !== null} onClick={() => updateBlueskyMode("DRY_RUN")}>Dry run</button><button className={bluesky.mode === "LIVE" ? "is-active" : ""} disabled={busy !== null} onClick={() => updateBlueskyMode("LIVE")}>Live public</button></div><button className="button button--quiet" disabled={busy !== null} onClick={disconnectBlueskyAccount}>{busy === "bluesky" ? <LoaderCircle className="spin" size={16} /> : <Unplug size={16} />}Disconnect</button></>}
+        <small>{blueskyLive ? "Every live post requires explicit confirmation after the Pevier policy decision." : "OAuth uses Bluesky's PKCE and DPoP flow. Pevier never receives the account password."}</small>
       </div>
     </section>
     <div className="platform-roadmap" aria-label="Upcoming platform adapters">
@@ -387,8 +468,17 @@ function SettingsView({ activePolicies, instagram, onInstagramChange, onActivity
         {instagramResult && <div className={`upload-result upload-result--${instagramResult.tone}`} role="status"><strong>{instagramResult.title}</strong><span>{instagramResult.detail}</span>{instagramResult.evidence && <small>Evidence {instagramResult.evidence}</small>}</div>}
       </form>
     </section>}
+    {bluesky?.connected && <section className="instagram-simulator bluesky-publisher">
+      <div className="instagram-simulator__intro"><span>{blueskyLive ? "LIVE TEXT PUBLISHER" : "POLICY PREVIEW"}</span><h2>{blueskyLive ? "Publish one Bluesky post through the firewall." : "Evaluate a Bluesky post without a network write."}</h2><p>{blueskyLive ? "Write the exact post, review the safety signals, and explicitly confirm the public write. Pevier publishes only after an ALLOW decision." : "Pevier evaluates the real text and saves the decision, but does not contact the user's PDS."}</p><div className={`safe-lock ${blueskyLive ? "safe-lock--public" : ""}`}><ShieldCheck size={16} />{blueskyLive ? "Public confirmation required on every post" : "Dry run · decision saved · Bluesky not contacted"}</div></div>
+      <form className="instagram-form" onSubmit={submitBluesky}>
+        <label className="instagram-field"><span>Post text</span><textarea name="text" required rows={6} placeholder="Write the Bluesky post Pevier should evaluate." /><small>Maximum 300 grapheme characters. Links and mentions are detected during live publishing.</small></label>
+        <fieldset className="instagram-review-options"><legend>Review signals</legend><label><input type="checkbox" name="syntheticMedia" /><span>Contains AI-generated or synthetic claims</span></label><label><input type="checkbox" name="humanEditorialReview" defaultChecked /><span>Human editorial review complete</span></label>{blueskyLive && <label className="instagram-public-confirmation"><input type="checkbox" name="confirmPublicPublish" required /><span>I approve publishing this post publicly</span></label>}</fieldset>
+        <button className="button button--primary instagram-submit" type="submit" disabled={!bluesky.connected || busy !== null}>{busy === "bluesky" ? <LoaderCircle className="spin" size={17} /> : blueskyLive ? <Send size={17} /> : <ShieldCheck size={17} />}{busy === "bluesky" ? "Evaluating policy…" : blueskyLive ? "Evaluate and publish public post" : "Run policy preview"}</button>
+        {blueskyResult && <div className={`upload-result upload-result--${blueskyResult.tone}`} role="status"><strong>{blueskyResult.title}</strong><span>{blueskyResult.detail}</span>{blueskyResult.evidence && <small>Evidence {blueskyResult.evidence}</small>}</div>}
+      </form>
+    </section>}
     <section className="agent-bridge">
-      <div className="agent-bridge__intro"><div className="agent-symbol"><Bot size={19} /></div><div><span>PRODUCTION AGENT API</span><h2>Publisher bridge</h2><p>Create an account-scoped key for your own autonomous publisher. The key can submit metadata but never receives Instagram credentials or permission to confirm a public write.</p></div></div>
+      <div className="agent-bridge__intro"><div className="agent-symbol"><Bot size={19} /></div><div><span>PRODUCTION AGENT API</span><h2>Publisher bridge</h2><p>Create an account-scoped key for your own autonomous publisher. The key can submit metadata but never receives social OAuth credentials or permission to confirm a public write.</p></div></div>
       <div className="agent-route" aria-label="Autonomous agent enforcement path"><span><Bot size={16} /><strong>Your agent</strong><small>Account-key authenticated</small></span><ArrowRight /><span><Shield size={16} /><strong>POST /api/publish</strong><small>Owner-scoped records</small></span><ArrowRight /><span><SlidersHorizontal size={16} /><strong>Policy firewall</strong><small>ALLOW · HOLD · BLOCK</small></span></div>
       <div className="agent-bridge__status">
         <Badge tone={agentStatusError ? "danger" : agentGateway?.ready ? "safe" : "warn"}><span className={agentGateway?.ready ? "live-dot" : "offline-dot"} /> {agentStatusError ? "UNAVAILABLE" : agentGateway?.ready ? "READY" : "CHECKING"}</Badge>
@@ -398,14 +488,14 @@ function SettingsView({ activePolicies, instagram, onInstagramChange, onActivity
       </div>
       <div className="agent-key-manager">
         <div><span>ACCOUNT API KEYS</span><small>Keys are shown once. Store them in your agent&apos;s secret manager.</small></div>
-        <button className="button button--primary" onClick={() => void createAgentCredential()} disabled={agentKeyBusy || !instagram?.connected}>{agentKeyBusy ? <LoaderCircle className="spin" size={16} /> : <TerminalSquare size={16} />}Create account key</button>
+        <button className="button button--primary" onClick={() => void createAgentCredential()} disabled={agentKeyBusy || (!instagram?.connected && !bluesky?.connected)}>{agentKeyBusy ? <LoaderCircle className="spin" size={16} /> : <TerminalSquare size={16} />}Create account key</button>
         {issuedAgentToken && <div className="issued-agent-key" role="status"><div><strong>Copy this key now</strong><small>It cannot be displayed again.</small></div><code>{issuedAgentToken}</code><button className="icon-button" onClick={() => void navigator.clipboard.writeText(issuedAgentToken)} aria-label="Copy account API key"><Copy size={15} /></button></div>}
         {agentCredentials.map((credential) => <div className="agent-key-row" key={credential.id}><span><strong>{credential.label}</strong><small>{credential.tokenPrefix}… · created {new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(credential.createdAt))}</small></span><span>{credential.lastUsedAt ? `Used ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(credential.lastUsedAt))}` : "Never used"}</span><button className="icon-button" onClick={() => void revokeAgentCredential(credential.id)} disabled={agentKeyBusy} aria-label={`Revoke ${credential.label}`}><Trash2 size={15} /></button></div>)}
-        {!agentCredentials.length && !issuedAgentToken && <p className="agent-key-empty">No account key exists yet. Connect Instagram, then create one for your production agent.</p>}
+        {!agentCredentials.length && !issuedAgentToken && <p className="agent-key-empty">No account key exists yet. Connect a platform, then create one for your production agent.</p>}
       </div>
     </section>
-    <div className="settings-grid"><section className="settings-panel"><div className="panel-head"><div><span>RUNTIME</span><small>Per-user social connections</small></div><Gauge size={17} /></div>{[["Instagram mode", instagram?.connected ? instagram.mode : "DRY_RUN"], ["Instagram visibility", instagramLive ? "PUBLIC · CONFIRM EACH" : "NO PLATFORM WRITE"], ["Agent ID", instagram?.agentId ?? "CONNECT INSTAGRAM"], ["Channel ID", instagram?.channelId ?? "CONNECT INSTAGRAM"], ["Account API keys", String(agentCredentials.length)], ["Policy set", `${activePolicies} active`], ["Audit digest", "SHA-256"]].map(([label, value]) => <div className="setting-row" key={label}><span>{label}</span><strong title={value}>{value}</strong></div>)}</section><section className="settings-panel api-panel"><div className="panel-head"><div><span>AGENT INTEGRATION</span><small>Request must pass through Pevier</small></div><TerminalSquare size={17} /></div><pre><code>{snippet}</code></pre></section></div>
-    <section className="endpoint-list"><h2>API surface</h2>{[["POST", "/api/publish", "Evaluate one authenticated agent request"], ["GET", "/api/posts", "Read the current user's publication history"], ["GET", "/api/platforms/instagram", "Read the current user's Instagram connection"], ["POST", "/api/platforms/instagram/publish", "Evaluate a policy preview or confirmed public Reel"], ["GET", "/api/status", "Read account circuit and agent state"], ["GET", "/api/audit", "Read and verify evidence"]].map(([method, path, copy]) => <div key={path}><Badge tone={method === "POST" ? "accent" : "neutral"}>{method}</Badge><code>{path}</code><span>{copy}</span><ChevronRight /></div>)}</section>
+    <div className="settings-grid"><section className="settings-panel"><div className="panel-head"><div><span>RUNTIME</span><small>Per-user social connections</small></div><Gauge size={17} /></div>{[["Instagram mode", instagram?.connected ? instagram.mode : "DISCONNECTED"], ["Bluesky mode", bluesky?.connected ? bluesky.mode : "DISCONNECTED"], ["Instagram agent", instagram?.agentId ?? "CONNECT INSTAGRAM"], ["Bluesky agent", bluesky?.agentId ?? "CONNECT BLUESKY"], ["Account API keys", String(agentCredentials.length)], ["Policy set", `${activePolicies} active`], ["Audit digest", "SHA-256"]].map(([label, value]) => <div className="setting-row" key={label}><span>{label}</span><strong title={value}>{value}</strong></div>)}</section><section className="settings-panel api-panel"><div className="panel-head"><div><span>AGENT INTEGRATION</span><small>Request must pass through Pevier</small></div><TerminalSquare size={17} /></div><pre><code>{snippet}</code></pre></section></div>
+    <section className="endpoint-list"><h2>API surface</h2>{[["POST", "/api/publish", "Evaluate one authenticated agent request"], ["GET", "/api/posts", "Read the current user's publication history"], ["GET", "/api/platforms/instagram", "Read the current user's Instagram connection"], ["POST", "/api/platforms/instagram/publish", "Evaluate a policy preview or confirmed public Reel"], ["GET", "/api/platforms/bluesky", "Read the current user's Bluesky connection"], ["POST", "/api/platforms/bluesky/publish", "Evaluate or publish a confirmed Bluesky post"], ["GET", "/api/status", "Read account circuit and agent state"], ["GET", "/api/audit", "Read and verify evidence"]].map(([method, path, copy]) => <div key={path}><Badge tone={method === "POST" ? "accent" : "neutral"}>{method}</Badge><code>{path}</code><span>{copy}</span><ChevronRight /></div>)}</section>
   </div>;
 }
 

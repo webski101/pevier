@@ -5,6 +5,7 @@ import { calculateRisk } from "./risk";
 import { getAdapter } from "./adapters";
 import { resolveYouTubeMode } from "./youtube";
 import { resolveInstagramMode } from "./instagram";
+import { resolveBlueskyMode } from "./bluesky";
 import { hashAuditRecord } from "./audit";
 import { buildRemediationPlan } from "./remediation";
 import type { GatewayResult, HistoricalPost, PlatformDelivery, PlatformMode, PublishRequest } from "./types";
@@ -17,7 +18,7 @@ export async function evaluatePublishRequest(request: PublishRequest, overrides?
   delivery?: PlatformDelivery;
 }): Promise<GatewayResult> {
   const persist = overrides?.persist ?? true;
-  const userId = overrides?.delivery?.youtube?.userId ?? overrides?.delivery?.instagram?.userId ?? null;
+  const userId = overrides?.delivery?.youtube?.userId ?? overrides?.delivery?.instagram?.userId ?? overrides?.delivery?.bluesky?.userId ?? null;
   const ownerWhere = { userId };
   const storedPosts = overrides?.history ? [] : await db.post.findMany({
     where: { ...ownerWhere, status: "LIVE_PUBLISHED" },
@@ -36,7 +37,13 @@ export async function evaluatePublishRequest(request: PublishRequest, overrides?
   const risk = calculateRisk(policyResults);
   const decisionId = `PV-${randomUUID().slice(0, 8).toUpperCase()}`;
   const configuredMode = (process.env.PEVIER_PUBLISH_MODE ?? "DRY_RUN") as PlatformMode;
-  const mode = request.platform === "youtube" ? await resolveYouTubeMode(overrides?.delivery?.youtube?.userId) : request.platform === "instagram" ? await resolveInstagramMode(overrides?.delivery?.instagram?.userId) : configuredMode;
+  const mode = request.platform === "youtube"
+    ? await resolveYouTubeMode(overrides?.delivery?.youtube?.userId)
+    : request.platform === "instagram"
+      ? await resolveInstagramMode(overrides?.delivery?.instagram?.userId)
+      : request.platform === "bluesky"
+        ? await resolveBlueskyMode(overrides?.delivery?.bluesky?.userId)
+        : configuredMode;
   const adapter = getAdapter(request.platform, mode);
   let publication: GatewayResult["publication"] = { published: false, mode, reason: risk.decision === "ALLOW" ? "NOT_ATTEMPTED" : "POLICY_REJECTED" };
   if (risk.decision === "ALLOW") {
