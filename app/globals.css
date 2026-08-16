@@ -342,6 +342,11 @@ main { flex: 1; }
 .offline-dot { display: inline-block; width: .45rem; height: .45rem; border-radius: 50%; background: var(--color-muted); }
 .platform-connection__actions { display: flex; align-items: flex-end; flex-direction: column; gap: var(--space-sm); }
 .platform-connection__actions > small { max-width: 28rem; color: var(--color-graphite-muted); text-align: end; }
+.platform-requirement { display: flex; align-items: flex-start; gap: var(--space-sm); max-width: 27rem; color: var(--color-warn); text-align: start; }
+.platform-requirement > svg { flex: 0 0 auto; margin-block-start: .15rem; }
+.platform-requirement span { display: flex; flex-direction: column; gap: var(--space-3xs); }
+.platform-requirement strong { color: var(--color-graphite-ink); font-size: var(--text-sm); }
+.platform-requirement small { color: var(--color-graphite-muted); }
 .bluesky-connection { margin-block-start: var(--space-md); }
 .config-callout { display: flex; align-items: flex-end; flex-direction: column; gap: var(--space-2xs); color: var(--color-graphite-muted); font-size: var(--text-xs); }
 .mode-switch { display: flex; padding: var(--space-2xs); border: var(--rule-thin) solid var(--color-rule-strong); border-radius: var(--radius-sm); background: var(--color-graphite-2); }
