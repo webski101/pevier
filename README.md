@@ -15,6 +15,7 @@
   ![Vercel](https://img.shields.io/badge/Vercel-deployed-000000?style=flat-square&logo=vercel)
 </div>
 
+link; https://pevier.vercel.app/
 ---
 
 ## Why Pevier exists
