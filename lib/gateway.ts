@@ -17,9 +17,13 @@ export async function evaluatePublishRequest(request: PublishRequest, overrides?
   delivery?: PlatformDelivery;
 }): Promise<GatewayResult> {
   const persist = overrides?.persist ?? true;
-  const userId = overrides?.delivery?.youtube?.userId ?? null;
+  const userId = overrides?.delivery?.youtube?.userId ?? overrides?.delivery?.instagram?.userId ?? null;
   const ownerWhere = { userId };
-  const storedPosts = overrides?.history ? [] : await db.post.findMany({ where: ownerWhere, orderBy: { createdAt: "asc" }, take: 100 });
+  const storedPosts = overrides?.history ? [] : await db.post.findMany({
+    where: { ...ownerWhere, status: "LIVE_PUBLISHED" },
+    orderBy: { createdAt: "asc" },
+    take: 100,
+  });
   const history: HistoricalPost[] = overrides?.history ?? storedPosts.map((post) => ({
     id: post.id, agentId: post.agentId, channelId: post.channelId, title: post.title, contentText: post.contentText, createdAt: post.createdAt,
   }));
@@ -32,7 +36,7 @@ export async function evaluatePublishRequest(request: PublishRequest, overrides?
   const risk = calculateRisk(policyResults);
   const decisionId = `PV-${randomUUID().slice(0, 8).toUpperCase()}`;
   const configuredMode = (process.env.PEVIER_PUBLISH_MODE ?? "DRY_RUN") as PlatformMode;
-  const mode = request.platform === "youtube" ? await resolveYouTubeMode(overrides?.delivery?.youtube?.userId) : request.platform === "instagram" ? resolveInstagramMode() : configuredMode;
+  const mode = request.platform === "youtube" ? await resolveYouTubeMode(overrides?.delivery?.youtube?.userId) : request.platform === "instagram" ? await resolveInstagramMode(overrides?.delivery?.instagram?.userId) : configuredMode;
   const adapter = getAdapter(request.platform, mode);
   let publication: GatewayResult["publication"] = { published: false, mode, reason: risk.decision === "ALLOW" ? "NOT_ATTEMPTED" : "POLICY_REJECTED" };
   if (risk.decision === "ALLOW") {

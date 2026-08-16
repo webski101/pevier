@@ -87,6 +87,7 @@ export interface PlatformDelivery {
     mimeType: string;
   };
   instagram?: {
+    userId: string;
     publicConfirmation: boolean;
     shareToFeed: boolean;
     videoUrl?: string;

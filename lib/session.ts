@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { db } from "./db";
 
-const SESSION_COOKIE = "pevier_session";
+export const SESSION_COOKIE = "pevier_session";
 const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 function hashToken(token: string) {
@@ -48,4 +48,10 @@ export async function getCurrentUser() {
     return null;
   }
   return session.user;
+}
+
+export async function destroyCurrentSession() {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return;
+  await db.userSession.deleteMany({ where: { tokenHash: hashToken(token) } });
 }

@@ -7,7 +7,8 @@ const schema = z.object({ id: z.string(), enabled: z.boolean().optional(), warnA
 
 export async function GET() {
   const user = await getCurrentUser();
-  return NextResponse.json(user ? await db.policySetting.findMany({ where: { userId: user.id } }) : []);
+  if (!user) return NextResponse.json({ error: "Sign in to view policy settings." }, { status: 401 });
+  return NextResponse.json(await db.policySetting.findMany({ where: { userId: user.id } }));
 }
 export async function PATCH(request: Request) {
   const user = await getCurrentUser();

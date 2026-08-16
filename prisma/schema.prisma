@@ -14,6 +14,7 @@ model User {
   name          String?
   avatarUrl     String?
   sessions      UserSession[]
+  agentCredentials AgentCredential[]
   connections   PlatformConnection[]
   posts         Post[]
   auditRecords  AuditRecord[]
@@ -21,6 +22,20 @@ model User {
   incidents      Incident[]
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
+}
+
+model AgentCredential {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label      String    @default("Production agent")
+  tokenHash  String    @unique
+  tokenPrefix String
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model UserSession {

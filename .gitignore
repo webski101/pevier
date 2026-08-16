@@ -8,3 +8,6 @@ coverage
 *.tsbuildinfo
 .hallmark/
 prisma/schema.local.prisma
+
+.vercel
+.env*

@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { exchangeYouTubeCode } from "@/lib/youtube";
-import { createUserSession, sessionCookie } from "@/lib/session";
+import { exchangeInstagramCode } from "@/lib/instagram";
+import { getCurrentUser } from "@/lib/session";
 
 function matchesState(expected: string | undefined, received: string | null) {
   if (!expected || !received) return false;
@@ -13,30 +13,27 @@ function matchesState(expected: string | undefined, received: string | null) {
 function settingsRedirect(request: NextRequest, result: string) {
   const url = new URL("/control-room", request.url);
   url.searchParams.set("view", "Settings");
-  url.searchParams.set("youtube", result);
+  url.searchParams.set("instagram", result);
   const response = NextResponse.redirect(url);
-  response.cookies.delete("pevier_youtube_oauth_state");
+  response.cookies.delete("pevier_instagram_oauth_state");
   return response;
 }
 
 export async function GET(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.redirect(new URL("/?auth=required", request.url));
   const params = request.nextUrl.searchParams;
   if (params.get("error")) return settingsRedirect(request, "denied");
-  if (!matchesState(request.cookies.get("pevier_youtube_oauth_state")?.value, params.get("state"))) {
+  if (!matchesState(request.cookies.get("pevier_instagram_oauth_state")?.value, params.get("state"))) {
     return settingsRedirect(request, "invalid-state");
   }
-
   const code = params.get("code");
   if (!code) return settingsRedirect(request, "missing-code");
-
   try {
-    const user = await exchangeYouTubeCode(code, request.nextUrl.origin);
-    const token = await createUserSession(user.id);
-    const response = settingsRedirect(request, "connected");
-    const cookie = sessionCookie(token);
-    response.cookies.set(cookie.name, cookie.value, cookie.options);
-    return response;
-  } catch {
+    await exchangeInstagramCode(code, user.id, request.nextUrl.origin);
+    return settingsRedirect(request, "connected");
+  } catch (error) {
+    console.error("[instagram-oauth] connection failed", error instanceof Error ? error.message : "Unknown error");
     return settingsRedirect(request, "connection-failed");
   }
 }

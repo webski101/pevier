@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { uploadPrivateYouTubeVideo } from "./youtube";
-import { getInstagramStatus, publishInstagramReel } from "./instagram";
+import { publishInstagramReel } from "./instagram";
 import type { PlatformDelivery, PlatformMode, PublishRequest } from "./types";
 
 export type PublicationResult = {
@@ -59,14 +59,14 @@ export class InstagramAdapter implements PlatformAdapter {
   constructor(private mode: PlatformMode = "DRY_RUN") {}
   async getPublishingLimits() { return { used: 0, limit: 100, source: "Pevier-observed Instagram publications" }; }
   async validateCredentials() {
-    if (this.mode !== "LIVE") return true;
-    return (await getInstagramStatus()).connected;
+    return this.mode !== "LIVE";
   }
   async publish(request: PublishRequest, delivery?: PlatformDelivery): Promise<PublicationResult> {
     if (this.mode !== "LIVE") return { published: false, mode: "DRY_RUN", reason: "DRY_RUN" };
+    if (!delivery?.instagram?.userId) return { published: false, mode: "LIVE", reason: "USER_SESSION_REQUIRED" };
     if (!delivery?.instagram?.publicConfirmation) return { published: false, mode: "LIVE", reason: "PUBLIC_CONFIRMATION_REQUIRED" };
     if (!delivery.instagram.videoUrl) return { published: false, mode: "LIVE", reason: "INSTAGRAM_PUBLIC_VIDEO_URL_REQUIRED" };
-    const result = await publishInstagramReel(delivery.instagram.videoUrl, {
+    const result = await publishInstagramReel(delivery.instagram.userId, delivery.instagram.videoUrl, {
       caption: request.description ?? request.contentText,
       shareToFeed: delivery.instagram.shareToFeed,
     });
