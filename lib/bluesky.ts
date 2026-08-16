@@ -122,7 +122,10 @@ const sessionStore = {
 const databaseRequestLock: RuntimeLock = async (key, fn) => {
   if (!process.env.DATABASE_URL?.startsWith("postgres")) return requestLocalLock(key, fn);
   return db.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`pevier-bluesky:${key}`}, 0))`;
+    // PostgreSQL returns the advisory-lock function as the pseudo-type `void`.
+    // Prisma cannot deserialize that type, so expose the result as text while
+    // preserving the transaction-scoped locking side effect.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`pevier-bluesky:${key}`}, 0))::text AS lock_result`;
     return fn();
   }, { maxWait: 10_000, timeout: 45_000 });
 };
