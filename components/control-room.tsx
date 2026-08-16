@@ -435,9 +435,9 @@ function SettingsView({ activePolicies, instagram, bluesky, onInstagramChange, o
       </div>
       <div className="platform-connection__actions">
         {!bluesky?.configured && <div className="config-callout"><code>BLUESKY_PUBLIC_URL</code><code>BLUESKY_OAUTH_PRIVATE_KEY</code></div>}
-        {bluesky?.configured && !bluesky.connected && <form className="bluesky-connect-form" action="/api/platforms/bluesky/connect" method="get"><label><span>Bluesky handle</span><input name="handle" required placeholder="name.bsky.social" autoComplete="username" /></label><button className="button button--primary" type="submit"><Cloud size={17} />Connect Bluesky</button></form>}
+        {bluesky?.configured && !bluesky.connected && <a className="button button--primary" href="/api/platforms/bluesky/connect"><Cloud size={17} />Connect Bluesky</a>}
         {bluesky?.connected && <><div className="mode-switch" aria-label="Bluesky publisher mode"><button className={bluesky.mode === "DRY_RUN" ? "is-active" : ""} disabled={busy !== null} onClick={() => updateBlueskyMode("DRY_RUN")}>Dry run</button><button className={bluesky.mode === "LIVE" ? "is-active" : ""} disabled={busy !== null} onClick={() => updateBlueskyMode("LIVE")}>Live public</button></div><button className="button button--quiet" disabled={busy !== null} onClick={disconnectBlueskyAccount}>{busy === "bluesky" ? <LoaderCircle className="spin" size={16} /> : <Unplug size={16} />}Disconnect</button></>}
-        <small>{blueskyLive ? "Every live post requires explicit confirmation after the Pevier policy decision." : "OAuth uses Bluesky's PKCE and DPoP flow. Pevier never receives the account password."}</small>
+        <small>{blueskyLive ? "Every live post requires explicit confirmation after the Pevier policy decision." : "Bluesky opens its secure account selector. Pevier never receives the account password."}</small>
       </div>
     </section>
     <div className="platform-roadmap" aria-label="Upcoming platform adapters">

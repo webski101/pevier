@@ -343,9 +343,6 @@ main { flex: 1; }
 .platform-connection__actions { display: flex; align-items: flex-end; flex-direction: column; gap: var(--space-sm); }
 .platform-connection__actions > small { max-width: 28rem; color: var(--color-graphite-muted); text-align: end; }
 .bluesky-connection { margin-block-start: var(--space-md); }
-.bluesky-connect-form { display: flex; align-items: flex-end; gap: var(--space-sm); }
-.bluesky-connect-form label { display: flex; min-width: 13rem; flex-direction: column; gap: .35rem; color: var(--color-graphite-muted); font-size: var(--text-xs); }
-.bluesky-connect-form input { min-height: 2.85rem; padding: var(--space-sm) var(--space-md); border: var(--rule-thin) solid #3b5875; border-radius: var(--radius-sm); background: #0b1722; color: white; }
 .config-callout { display: flex; align-items: flex-end; flex-direction: column; gap: var(--space-2xs); color: var(--color-graphite-muted); font-size: var(--text-xs); }
 .mode-switch { display: flex; padding: var(--space-2xs); border: var(--rule-thin) solid var(--color-rule-strong); border-radius: var(--radius-sm); background: var(--color-graphite-2); }
 .mode-switch button { min-height: 2.4rem; padding-inline: var(--space-md); border: 0; border-radius: calc(var(--radius-sm) - var(--space-2xs)); background: transparent; color: var(--color-graphite-muted); cursor: pointer; }
@@ -629,8 +626,6 @@ main { flex: 1; }
   .issued-agent-key > div, .agent-key-row > span:first-child { grid-column: 1 / -1; }
   .field-wide { grid-column: 1; }
   .mode-switch, .platform-connection__actions { width: 100%; }
-  .bluesky-connect-form { width: 100%; align-items: stretch; flex-direction: column; }
-  .bluesky-connect-form label { min-width: 0; }
   .platform-coming-soon { grid-template-columns: auto minmax(0, 1fr); padding-inline: 0; }
   .platform-coming-soon > .badge { grid-column: 2; justify-self: start; }
   .instagram-submit { width: 100%; }

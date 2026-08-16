@@ -14,12 +14,15 @@ export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.redirect(new URL("/?auth=required", request.url));
   if (!isBlueskyConfigured()) return settingsRedirect(request, "missing-config");
-  const handle = request.nextUrl.searchParams.get("handle")?.trim() ?? "";
-  if (!handle) return settingsRedirect(request, "missing-handle");
+  // Most Bluesky users are hosted behind the bsky.social entryway. Starting
+  // OAuth from the server lets Bluesky show its own login/account selector,
+  // so Pevier does not need to ask for a handle first. A different AT Protocol
+  // issuer can still be supplied later through the optional `issuer` query.
+  const issuer = request.nextUrl.searchParams.get("issuer")?.trim() || "https://bsky.social";
 
   const state = randomBytes(32).toString("base64url");
   try {
-    const authorizationUrl = await createBlueskyAuthorizationUrl(handle, state, request.nextUrl.origin);
+    const authorizationUrl = await createBlueskyAuthorizationUrl(issuer, state, request.nextUrl.origin);
     const response = NextResponse.redirect(authorizationUrl);
     response.cookies.set("pevier_bluesky_oauth_state", state, {
       httpOnly: true,

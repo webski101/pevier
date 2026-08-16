@@ -153,9 +153,9 @@ export async function getBlueskyJwks(origin?: string) {
   return (await getBlueskyOAuthClient(origin)).jwks;
 }
 
-export async function createBlueskyAuthorizationUrl(handle: string, state: string, origin: string) {
-  const normalized = handle.trim().replace(/^@/, "");
-  if (!normalized || normalized.length > 253 || !normalized.includes(".")) throw new Error("Enter a complete Bluesky handle, such as name.bsky.social.");
+export async function createBlueskyAuthorizationUrl(identifier: string, state: string, origin: string) {
+  const normalized = identifier.trim().replace(/^@/, "");
+  if (!normalized || normalized.length > 253) throw new Error("Enter a valid Bluesky account or provider.");
   return (await getBlueskyOAuthClient(origin)).authorize(normalized, { state });
 }
 
